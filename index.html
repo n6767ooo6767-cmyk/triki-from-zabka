@@ -3,69 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Triki Games</title>
-
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
 <div class="container">
-
     <h1>🎮 Triki Games</h1>
 
-    <button id="connect">
-        🔵 Connect Triki
-    </button>
+    <div>
+        <button id="connect">🔵 Connect Triki 1</button>
+        <button id="connect2">🔵 Connect Triki 2</button>
+        <button id="disconnect" style="background: #d9534f;">❌ Disconnect All</button>
+    </div>
 
     <div id="status">
         🔴 Disconnected
     </div>
 
-
     <div id="menu">
-
         <h2>Игры</h2>
-
-        <button class="game" id="pong">
-            🏓 Pong
-        </button>
-
-        <button class="game" id="snake">
-            🐍 Snake
-        </button>
-
-        <button class="game" id="toss">
-            🎲 Toss
-        </button>
-
-        <button class="game" id="boxing">
-            🥊 Boxing
-        </button>
-
-        <button class="game" id="frog">
-            🐸 Crazy Frog
-        </button>
-
+        <button class="game" id="pong">🏓 Pong</button>
+        <button class="game" id="snake">🐍 Snake</button>
+        <button class="game" id="toss">🎲 Toss</button>
+        <button class="game" id="boxing">🥊 Мега-Силомер</button>
+        <button class="game" id="frog">🐸 Crazy Frog</button>
+        <button class="game" id="duel1v1" style="border-color: #ff3333;">⚔️ 1 v 1 Duel (2 Triki)</button>
     </div>
 
-
-    <canvas id="game"
-        width="900"
-        height="500">
-    </canvas>
-
+    <canvas id="game" width="900" height="500"></canvas>
 
     <button id="back" style="display:none;">
         ⬅ Menu
     </button>
-
-
 </div>
 
-
 <script src="app.js"></script>
-
 </body>
 </html>
