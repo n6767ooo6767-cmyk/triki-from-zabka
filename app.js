@@ -13,13 +13,12 @@ const START = Uint8Array.from([
     0x03
 ]);
 
-let triki1 = { server: null, rx: null, tx: null, accel: { x: 0, y: 0, z: 0 }, connected: false };
-let triki2 = { server: null, rx: null, tx: null, accel: { x: 0, y: 0, z: 0 }, connected: false };
+let triki1 = { server: null, rx: null, tx: null, accel: { x: 0, y: 0, z: 0 }, connected: false, deviceId: null };
+let triki2 = { server: null, rx: null, tx: null, accel: { x: 0, y: 0, z: 0 }, connected: false, deviceId: null };
 
 let accel = { x: 0, y: 0, z: 0 };
 let connected = false;
 
-// Глобальная сложность силомера: "easy", "medium", "hard", "impossible"
 let punchDifficulty = "hard"; 
 
 // GAME CORE
@@ -221,7 +220,7 @@ function tossLoop() {
 }
 
 
-// ==================== 4. BOXING (СИЛОМЕР С ВЫБОРОМ СЛОЖНОСТИ) ====================
+// ==================== 4. BOXING ====================
 let punchState = "ready"; 
 let currentPunchScore = 0;
 let maxPunchScore = 0;
@@ -229,7 +228,6 @@ let punchTimer = 0;
 
 function setBoxingDifficulty(diff) {
     punchDifficulty = diff;
-    // Подсветка активной кнопки сложности
     ['easy', 'medium', 'hard', 'impossible'].forEach(d => {
         const btn = document.getElementById("diff_" + d);
         if (btn) {
@@ -251,7 +249,6 @@ function startBoxing() {
 function boxingLoop() {
     let totalAccel = Math.hypot(accel.x, accel.y, accel.z);
 
-    // Настройка порогов и формул под выбранный уровень сложности
     let threshold = 5.0;
     let multiplier = 40.0;
     let powerExp = 1.0;
@@ -269,7 +266,7 @@ function boxingLoop() {
         multiplier = 10.0;
         powerExp = 1.25;
     } else if (punchDifficulty === "impossible") {
-        threshold = 38.0; // Жесткий порог: нужен колоссальный удар
+        threshold = 38.0;
         multiplier = 4.5;
         powerExp = 1.15;
     }
@@ -417,7 +414,7 @@ let score2 = 0;
 
 function start1v1() {
     if (!triki1.connected || !triki2.connected) {
-        alert("Для режима 1v1 нужно подключить ровно 2 пульта Triki!");
+        alert("Для режима 1v1 нужно подключить ровно 2 разных пульта Triki!");
         return;
     }
     setupGame("duel");
@@ -500,7 +497,7 @@ function resetBall1v1(dir) {
 }
 
 
-// ==================== BLE CONNECTIONS ====================
+// ==================== BLE CONNECTIONS (С ЗАЩИТОЙ ОТ ДУБЛИРОВАНИЯ) ====================
 
 document.getElementById("connect").onclick = async () => {
     try {
@@ -509,7 +506,14 @@ document.getElementById("connect").onclick = async () => {
             optionalServices: [SERVICE]
         });
 
+        // Проверка: если этот же пульт уже подключен как Triki 2
+        if (triki2.connected && triki2.deviceId === device.id) {
+            alert("Этот пульт Triki уже подключен как Игрок 2!");
+            return;
+        }
+
         triki1.server = await device.gatt.connect();
+        triki1.deviceId = device.id;
         const service = await triki1.server.getPrimaryService(SERVICE);
         triki1.rx = await service.getCharacteristic(RX);
         const tx = await service.getCharacteristic(TX);
@@ -545,7 +549,14 @@ document.getElementById("connect2") ? document.getElementById("connect2").onclic
             optionalServices: [SERVICE]
         });
 
+        // Проверка: если этот же пульт уже подключен как Triki 1
+        if (triki1.connected && triki1.deviceId === device.id) {
+            alert("Этот пульт Triki уже подключен как Игрок 1!");
+            return;
+        }
+
         triki2.server = await device.gatt.connect();
+        triki2.deviceId = device.id;
         const service = await triki2.server.getPrimaryService(SERVICE);
         triki2.rx = await service.getCharacteristic(RX);
         const tx = await service.getCharacteristic(TX);
@@ -579,7 +590,9 @@ document.getElementById("disconnect").onclick = () => {
         triki2.server.disconnect();
     }
     triki1.connected = false;
+    triki1.deviceId = null;
     triki2.connected = false;
+    triki2.deviceId = null;
     connected = false;
     updateStatus();
 };
@@ -604,7 +617,6 @@ document.getElementById("boxing").onclick = startBoxing;
 document.getElementById("frog").onclick = startFrog;
 document.getElementById("duel1v1") ? document.getElementById("duel1v1").onclick = start1v1 : null;
 
-// Привязка кнопок выбора сложности силомера
 ['easy', 'medium', 'hard', 'impossible'].forEach(d => {
     const btn = document.getElementById("diff_" + d);
     if (btn) {
