@@ -224,7 +224,7 @@ function tossLoop() {
 }
 
 
-// ==================== 4. BOXING (Силомер) ====================
+// ==================== 4. BOXING (Хардкорный Силомер) ====================
 let punchState = "ready"; // "ready", "punching", "result"
 let currentPunchScore = 0;
 let maxPunchScore = 0;
@@ -240,14 +240,18 @@ function startBoxing() {
 }
 
 function boxingLoop() {
+    // Берём чистую, суровую амплитуду ускорения по всем осям без подкрутки
     let totalAccel = Math.hypot(accel.x, accel.y, accel.z);
 
     if (punchState === "ready") {
-        // Ждем резкого удара (взмаха)
-        if (totalAccel > 4.0) {
+        // Порог повышен до 14 — нужно ударить реально со всей дури, легкий взмах игра проигнорирует
+        if (totalAccel > 14.0) {
             punchState = "punching";
-            currentPunchScore = Math.floor(totalAccel * 120 + Math.random() * 50);
+            
+            // Формула сложная: множитель маленький, чтобы дойти до 999, нужен олимпийский удар
+            currentPunchScore = Math.floor(Math.pow(totalAccel, 1.4) * 8 + Math.random() * 15);
             if (currentPunchScore > 999) currentPunchScore = 999;
+            
             if (currentPunchScore > maxPunchScore) {
                 maxPunchScore = currentPunchScore;
             }
@@ -262,16 +266,15 @@ function boxingLoop() {
 
     clearCanvas();
 
-    // Заголовок силомера
     ctx.fillStyle = "white";
     ctx.font = "32px Arial";
     ctx.textAlign = "center";
-    ctx.fillText("🥊 СИЛОМЕР 🥊", 450, 80);
+    ctx.fillText("🥊 ХАРДКОРНЫЙ СИЛОМЕР 🥊", 450, 80);
 
     if (punchState === "ready") {
-        ctx.fillStyle = "#2d7cff";
+        ctx.fillStyle = "#ff4444";
         ctx.font = "24px Arial";
-        ctx.fillText("Ударь Triki изо всех сил!", 450, 160);
+        ctx.fillText("БЕЙ СО ВСЕЙ ДУРИ! (Порог > 14.0)", 450, 160);
 
         if (maxPunchScore > 0) {
             ctx.fillStyle = "gold";
@@ -279,7 +282,6 @@ function boxingLoop() {
             ctx.fillText("Рекорд: " + maxPunchScore, 450, 220);
         }
     } else {
-        // Табло как в игровом автомате
         ctx.fillStyle = "#111";
         ctx.fillRect(250, 150, 400, 180);
         ctx.strokeStyle = "#ff3333";
@@ -292,10 +294,10 @@ function boxingLoop() {
 
         ctx.fillStyle = "white";
         ctx.font = "20px Arial";
-        ctx.fillText("СУПЕР УДАР!", 450, 360);
+        ctx.fillText("УДАР ИЗ БУНКЕРА!", 450, 360);
     }
     
-    ctx.textAlign = "left"; // сброс выравнивания
+    ctx.textAlign = "left";
 }
 
 
