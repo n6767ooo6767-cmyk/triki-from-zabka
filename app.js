@@ -170,13 +170,12 @@ function snakeLoop() {
 }
 
 
-// ==================== 3. TOSS (КОДОВЫЙ ЗАМОК: 5 ЦИФР-ВРАЩЕНИЙ) ====================
+// ==================== 3. TOSS (5 ЦИФР-ВРАЩЕНИЙ) ====================
 let tossSequence = [];
 let tossCurrentIndex = 0;
 let tossSpinsCount = 0;
-let tossGameState = "playing"; // "playing", "success", "fail"
+let tossGameState = "playing"; // "playing", "success"
 let tossMessageTimer = 0;
-
 let lastSpinAccelX = 0;
 let spinDetected = false;
 
@@ -189,7 +188,7 @@ function startToss() {
 function generateTossSequence() {
     tossSequence = [];
     for (let i = 0; i < 5; i++) {
-        // Каждое задание — случайное число оборотов от 1 до 4
+        // Каждое задание — от 1 до 4 оборотов
         tossSequence.push(Math.floor(Math.random() * 4) + 1);
     }
     tossCurrentIndex = 0;
@@ -201,32 +200,28 @@ function generateTossSequence() {
 function tossLoop() {
     let totalAccel = Math.hypot(accel.x, accel.y, accel.z);
 
-    // Логика детектирования оборота/резкого маха пультом по оси X
     if (tossGameState === "playing") {
-        if (Math.abs(accel.x - lastSpinAccelX) > 8.0 && !spinDetected) {
+        // Детектируем резкий рывок/оборот пульта
+        if (Math.abs(accel.x - lastSpinAccelX) > 7.5 && !spinDetected) {
             spinDetected = true;
             tossSpinsCount++;
 
-            // Если накрутили нужное количество оборотов для текущей цифры
             if (tossSpinsCount >= tossSequence[tossCurrentIndex]) {
                 tossCurrentIndex++;
                 tossSpinsCount = 0;
                 
-                // Проверяем, прошли ли все 5 цифр
                 if (tossCurrentIndex >= tossSequence.length) {
                     tossGameState = "success";
-                    tossMessageTimer = 120; // Показываем победу 2 секунды
+                    tossMessageTimer = 120; // 2 секунды показа победы
                 }
             }
         }
 
-        // Сбрасываем флаг, когда пульт немного успокоился
-        if (totalAccel < 5.0) {
+        if (totalAccel < 4.0) {
             spinDetected = false;
         }
         lastSpinAccelX = accel.x;
     } else {
-        // Таймер для перезапуска после победы или поражения
         tossMessageTimer--;
         if (tossMessageTimer <= 0) {
             generateTossSequence();
@@ -235,55 +230,53 @@ function tossLoop() {
 
     clearCanvas();
 
-    // Отрисовка интерфейса режима Toss
     ctx.fillStyle = "white";
-    ctx.font = "28px Arial";
+    ctx.font = "26px Arial";
     ctx.textAlign = "center";
-    ctx.fillText("🌀 ТРЕНИРОВКА ОБОРОТОВ (TOSS) 🌀", 450, 60);
+    ctx.fillText("🌀 TOSS: КОДОВЫЙ ЗАМОК 🌀", 450, 50);
 
-    ctx.font = "20px Arial";
+    ctx.font = "18px Arial";
     ctx.fillStyle = "#aaa";
-    ctx.fillText("Крути пульт, чтобы выполнить последовательность из 5 чисел:", 450, 100);
+    ctx.fillText("Крути пульт по порядку для каждого числа из 5:", 450, 85);
 
-    // Рисуем 5 цифр кодового замка
-    let startX = 450 - (5 * 70) / 2 + 35;
+    // Рисуем 5 цифр
+    let startX = 450 - (5 * 75) / 2 + 37;
     for (let i = 0; i < tossSequence.length; i++) {
-        let x = startX + i * 70;
-        let y = 200;
+        let x = startX + i * 75;
+        let y = 190;
 
-        // Стиль для текущей, пройденных и будущих цифр
         if (i < tossCurrentIndex) {
-            ctx.fillStyle = "#22bb22"; // Выполнено
+            ctx.fillStyle = "#22bb22";
             ctx.strokeStyle = "#22bb22";
         } else if (i === tossCurrentIndex && tossGameState === "playing") {
-            ctx.fillStyle = "#ffcc00"; // Активная
+            ctx.fillStyle = "#ffcc00";
             ctx.strokeStyle = "#ffcc00";
         } else {
-            ctx.fillStyle = "#555"; // Ожидает
-            ctx.strokeStyle = "#555";
+            ctx.fillStyle = "#444";
+            ctx.strokeStyle = "#444";
         }
 
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 4;
         ctx.beginPath();
-        ctx.arc(x, y, 30, 0, Math.PI * 2);
+        ctx.arc(x, y, 32, 0, Math.PI * 2);
         ctx.stroke();
 
-        ctx.font = "bold 26px Arial";
-        ctx.fillText(tossSequence[i], x, y + 9);
+        ctx.font = "bold 28px Arial";
+        ctx.fillText(tossSequence[i], x, y + 10);
     }
 
     if (tossGameState === "playing") {
         ctx.fillStyle = "white";
         ctx.font = "22px Arial";
-        ctx.fillText("Прогресс текущего числа: " + tossSpinsCount + " / " + tossSequence[tossCurrentIndex], 450, 310);
+        ctx.fillText("Вращений для текущего числа: " + tossSpinsCount + " / " + tossSequence[tossCurrentIndex], 450, 310);
         
         ctx.fillStyle = "#ff5555";
         ctx.font = "16px Arial";
-        ctx.fillText("Резко взмахни пультом по горизонтали, чтобы засчитать оборот", 450, 360);
+        ctx.fillText("Делай резкие взмахи/обороты пультом", 450, 360);
     } else if (tossGameState === "success") {
         ctx.fillStyle = "#22ff22";
-        ctx.font = "bold 40px Arial";
-        ctx.fillText("🎉 ОТЛИЧНО! ЗАМОК ВЗЛОМАН!", 450, 330);
+        ctx.font = "bold 36px Arial";
+        ctx.fillText("🎉 КОД ВЗЛОМАН! ОТЛИЧНО! 🎉", 450, 320);
     }
 
     ctx.textAlign = "left";
