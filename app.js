@@ -13,11 +13,13 @@ const START = Uint8Array.from([
     0x03
 ]);
 
-let trikiRX;
-let connected = false;
+// Поддержка двух контроллеров Triki для режима 1v1
+let triki1 = { server: null, rx: null, tx: null, accel: { x: 0, y: 0, z: 0 }, connected: false };
+let triki2 = { server: null, rx: null, tx: null, accel: { x: 0, y: 0, z: 0 }, connected: false };
 
-let gyro = { x: 0, y: 0, z: 0 };
+// Для совместимости с одиночными играми (управляет первый пульт)
 let accel = { x: 0, y: 0, z: 0 };
+let connected = false;
 
 // GAME CORE
 const canvas = document.getElementById("game");
@@ -92,7 +94,7 @@ function pongLoop() {
 }
 
 
-// ==================== 2. SNAKE (ИСПРАВЛЕНО: Плавный поворот по порогам наклона) ====================
+// ==================== 2. SNAKE ====================
 let snake = [];
 let food = {};
 let snakeDir = { x: 2, y: 0 };
@@ -107,8 +109,8 @@ function startSnake() {
     ];
     snakeScore = 0;
     spawnFood();
-    snakeDir = { x: 2, y: 0 }; // Стартовое движение вправо
-    gameInterval = setInterval(snakeLoop, 1000 / 30); // 30 кадров для плавной непрерывной змейки
+    snakeDir = { x: 2, y: 0 };
+    gameInterval = setInterval(snakeLoop, 1000 / 30);
 }
 
 function spawnFood() {
@@ -119,7 +121,6 @@ function spawnFood() {
 }
 
 function snakeLoop() {
-    // Управление наклоном (порог ±2.5, запрет разворота на 180 градусов назад)
     if (accel.x > 2.5 && snakeDir.x === 0) {
         snakeDir = { x: 2, y: 0 };
     } else if (accel.x < -2.5 && snakeDir.x === 0) {
@@ -132,13 +133,11 @@ function snakeLoop() {
 
     let head = { x: snake[0].x + snakeDir.x, y: snake[0].y + snakeDir.y };
 
-    // Проверка стен
     if (head.x < 0 || head.x >= 900 || head.y < 0 || head.y >= 500) {
         startSnake();
         return;
     }
 
-    // Проверка столкновения с собой
     for (let part of snake) {
         if (head.x === part.x && head.y === part.y) {
             startSnake();
@@ -148,7 +147,6 @@ function snakeLoop() {
 
     snake.unshift(head);
 
-    // Поедание еды
     let dist = Math.hypot(head.x - food.x, head.y - food.y);
     if (dist < 15) {
         snakeScore++;
@@ -172,7 +170,7 @@ function snakeLoop() {
 }
 
 
-// ==================== 3. TOSS (ИСПРАВЛЕНО: Управляется наклоном как у жабки, собираем монетки) ====================
+// ==================== 3. TOSS ====================
 let tossBall = { x: 450, y: 250 };
 let tossTarget = { x: 450, y: 250, radius: 25 };
 let tossScore = 0;
@@ -191,17 +189,14 @@ function spawnTossTarget() {
 }
 
 function tossLoop() {
-    // Наклон Triki напрямую двигает шарик по экрану (как у жабки)
     tossBall.x += accel.x * 3.5;
     tossBall.y += accel.y * 3.5;
 
-    // Границы холста
     if (tossBall.x < 20) tossBall.x = 20;
     if (tossBall.x > 880) tossBall.x = 880;
     if (tossBall.y < 20) tossBall.y = 20;
     if (tossBall.y > 480) tossBall.y = 480;
 
-    // Сбор цели
     let dist = Math.hypot(tossBall.x - tossTarget.x, tossBall.y - tossTarget.y);
     if (dist < tossTarget.radius + 15) {
         tossScore++;
@@ -209,13 +204,11 @@ function tossLoop() {
     }
 
     clearCanvas();
-    // Цель
     ctx.fillStyle = "gold";
     ctx.beginPath();
     ctx.arc(tossTarget.x, tossTarget.y, tossTarget.radius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Шар игрока
     ctx.fillStyle = "#ff3366";
     ctx.beginPath();
     ctx.arc(tossBall.x, tossBall.y, 15, 0, Math.PI * 2);
@@ -227,7 +220,7 @@ function tossLoop() {
 }
 
 
-// ==================== 4. BOXING (ИСПРАВЛЕНО: УЛЬТРА-ХАРДКОРНЫЙ СИЛОМЕР, хрен набьешь больше 300) ====================
+// ==================== 4. BOXING (МЕГА-СИЛОМЕР) ====================
 let punchState = "ready"; 
 let currentPunchScore = 0;
 let maxPunchScore = 0;
@@ -243,15 +236,11 @@ function startBoxing() {
 }
 
 function boxingLoop() {
-    // Берем модуль ускорения по всем осям
     let totalAccel = Math.hypot(accel.x, accel.y, accel.z);
 
     if (punchState === "ready") {
-        // Ужасный порог 22.0 — нужен молниеносный мощнейший удар об стол или резкий бросок
         if (totalAccel > 22.0) {
             punchState = "punching";
-            
-            // Очень жесткая формула, на выходе максимум копейки для слабых ударов
             currentPunchScore = Math.floor(Math.pow(totalAccel, 1.1) * 3 + Math.random() * 10);
             if (currentPunchScore > 999) currentPunchScore = 999;
             
@@ -304,7 +293,7 @@ function boxingLoop() {
 }
 
 
-// ==================== 5. CRAZY FROG (ИСПРАВЛЕНО: Четкий прыжок на резкий взмах вверх) ====================
+// ==================== 5. CRAZY FROG ====================
 let frogY = 380;
 let frogVy = 0;
 let isJumping = false;
@@ -324,13 +313,12 @@ function startFrog() {
 }
 
 function frogLoop() {
-    // Прыжок срабатывает, когда акселерометр Y резко уходит в минус (резкий взвок пульта вверх)
     if (!isJumping && accel.y < -5.0) {
         frogVy = -13;
         isJumping = true;
     }
 
-    frogVy += 0.55; // Гравитация
+    frogVy += 0.55;
     frogY += frogVy;
 
     if (frogY > 380) {
@@ -348,7 +336,6 @@ function frogLoop() {
     for (let i = obstacles.length - 1; i >= 0; i--) {
         obstacles[i].x -= 7;
 
-        // Коллизия с препятствием
         if (
             obstacles[i].x < 185 &&
             obstacles[i].x + obstacles[i].w > 150 &&
@@ -366,15 +353,12 @@ function frogLoop() {
 
     clearCanvas();
 
-    // Земля
     ctx.fillStyle = "#333";
     ctx.fillRect(0, 420, 900, 80);
 
-    // Лягушка
     ctx.fillStyle = "#22bb22";
     ctx.fillRect(150, frogY, 40, 40);
 
-    // Препятствия
     ctx.fillStyle = "#ff5555";
     for (let obs of obstacles) {
         ctx.fillRect(obs.x, 420 - obs.h, obs.w, obs.h);
@@ -386,8 +370,112 @@ function frogLoop() {
 }
 
 
-// ==================== BLE CONNECTION ====================
+// ==================== 6. 1V1 PONG (Требует 2 пульта Triki) ====================
+let p1Y = 200;
+let p2Y = 200;
+let ball1v1 = { x: 450, y: 250, vx: 5, vy: 3 };
+let score1 = 0;
+let score2 = 0;
 
+function start1v1() {
+    if (!triki1.connected || !triki2.connected) {
+        alert("Для режима 1v1 нужно подключить ровно 2 пульта Triki!");
+        return;
+    }
+    setupGame("duel");
+    p1Y = 200;
+    p2Y = 200;
+    ball1v1 = { x: 450, y: 250, vx: 6, vy: 4 };
+    score1 = 0;
+    score2 = 0;
+    gameInterval = setInterval(duelLoop, 1000 / 60);
+}
+
+function duelLoop() {
+    // Игрок 1 управляет левой ракеткой первым пульком (triki1)
+    p1Y += triki1.accel.y * 8;
+    if (p1Y < 0) p1Y = 0;
+    if (p1Y > 400) p1Y = 400;
+
+    // Игрок 2 управляет правой ракеткой вторым пульком (triki2)
+    p2Y += triki2.accel.y * 8;
+    if (p2Y < 0) p2Y = 0;
+    if (p2Y > 400) p2Y = 400;
+
+    ball1v1.x += ball1v1.vx;
+    ball1v1.y += ball1v1.vy;
+
+    if (ball1v1.y < 0 || ball1v1.y > 500) ball1v1.vy *= -1;
+
+    // Столкновение с левой ракеткой (Игрок 1)
+    if (ball1v1.x < 35 && ball1v1.y > p1Y && ball1v1.y < p1Y + 100) {
+        ball1v1.vx *= -1;
+        ball1v1.vx *= 1.05; // ускорение мяча
+    }
+
+    // Столкновение с правой ракеткой (Игрок 2)
+    if (ball1v1.x > 865 && ball1v1.y > p2Y && ball1v1.y < p2Y + 100) {
+        ball1v1.vx *= -1;
+        ball1v1.vx *= 1.05;
+    }
+
+    // Гол игроку 2 (мяч улетел влево)
+    if (ball1v1.x < 0) {
+        score2++;
+        resetBall1v1(-1);
+    }
+    // Гол игроку 1 (мяч улетел вправо)
+    if (ball1v1.x > 900) {
+        score1++;
+        resetBall1v1(1);
+    }
+
+    clearCanvas();
+
+    // Сетка посередине
+    ctx.strokeStyle = "#444";
+    ctx.lineWidth = 4;
+    ctx.setLineDash([10, 10]);
+    ctx.beginPath();
+    ctx.moveTo(450, 0);
+    ctx.lineTo(450, 500);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Ракетка 1 (Игрок 1)
+    ctx.fillStyle = "#2d7cff";
+    ctx.fillRect(20, p1Y, 15, 100);
+
+    // Ракетка 2 (Игрок 2)
+    ctx.fillStyle = "#ff3333";
+    ctx.fillRect(865, p2Y, 15, 100);
+
+    // Мяч
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.arc(ball1v1.x, ball1v1.y, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Счёт
+    ctx.fillStyle = "#2d7cff";
+    ctx.font = "32px Arial";
+    ctx.fillText("P1: " + score1, 250, 50);
+
+    ctx.fillStyle = "#ff3333";
+    ctx.fillText("P2: " + score2, 580, 50);
+}
+
+function resetBall1v1(dir) {
+    ball1v1.x = 450;
+    ball1v1.y = 250;
+    ball1v1.vx = 6 * dir;
+    ball1v1.vy = (Math.random() - 0.5) * 6;
+}
+
+
+// ==================== BLE CONNECTIONS ====================
+
+// Подключение первого пульта Triki
 document.getElementById("connect").onclick = async () => {
     try {
         const device = await navigator.bluetooth.requestDevice({
@@ -395,9 +483,9 @@ document.getElementById("connect").onclick = async () => {
             optionalServices: [SERVICE]
         });
 
-        const server = await device.gatt.connect();
-        const service = await server.getPrimaryService(SERVICE);
-        trikiRX = await service.getCharacteristic(RX);
+        triki1.server = await device.gatt.connect();
+        const service = await triki1.server.getPrimaryService(SERVICE);
+        triki1.rx = await service.getCharacteristic(RX);
         const tx = await service.getCharacteristic(TX);
 
         await tx.startNotifications();
@@ -408,23 +496,80 @@ document.getElementById("connect").onclick = async () => {
             if (d[0] !== 0x22 || d[1] !== 0x00) return;
 
             const dv = new DataView(d.buffer);
+            triki1.accel.x = dv.getInt16(8, true) / 2048;
+            triki1.accel.y = dv.getInt16(10, true) / 2048;
+            triki1.accel.z = dv.getInt16(12, true) / 2048;
 
-            gyro.x = dv.getInt16(2, true) / 131;
-            gyro.y = dv.getInt16(4, true) / 131;
-            gyro.z = dv.getInt16(6, true) / 131;
-
-            accel.x = dv.getInt16(8, true) / 2048;
-            accel.y = dv.getInt16(10, true) / 2048;
-            accel.z = dv.getInt16(12, true) / 2048;
+            // Синхронизация с глобальными переменными для одиночных игр
+            accel = triki1.accel;
         });
 
-        await trikiRX.writeValueWithoutResponse(START);
+        await triki1.rx.writeValueWithoutResponse(START);
+        triki1.connected = true;
         connected = true;
-        document.getElementById("status").innerHTML = "🟢 Connected";
+        updateStatus();
     } catch (err) {
-        console.error("Bluetooth connection failed:", err);
+        console.error("Bluetooth 1 failed:", err);
     }
 };
+
+// Подключение второго пульта Triki (для режима 1v1)
+document.getElementById("connect2") ? document.getElementById("connect2").onclick = async () => {
+    try {
+        const device = await navigator.bluetooth.requestDevice({
+            filters: [{ namePrefix: "Triki" }],
+            optionalServices: [SERVICE]
+        });
+
+        triki2.server = await device.gatt.connect();
+        const service = await triki2.server.getPrimaryService(SERVICE);
+        triki2.rx = await service.getCharacteristic(RX);
+        const tx = await service.getCharacteristic(TX);
+
+        await tx.startNotifications();
+
+        tx.addEventListener("characteristicvaluechanged", e => {
+            const d = new Uint8Array(e.target.value.buffer);
+            if (d.length < 14) return;
+            if (d[0] !== 0x22 || d[1] !== 0x00) return;
+
+            const dv = new DataView(d.buffer);
+            triki2.accel.x = dv.getInt16(8, true) / 2048;
+            triki2.accel.y = dv.getInt16(10, true) / 2048;
+            triki2.accel.z = dv.getInt16(12, true) / 2048;
+        });
+
+        await triki2.rx.writeValueWithoutResponse(START);
+        triki2.connected = true;
+        updateStatus();
+    } catch (err) {
+        console.error("Bluetooth 2 failed:", err);
+    }
+} : null;
+
+// Кнопка отключения всех пультов
+document.getElementById("disconnect").onclick = () => {
+    if (triki1.server && triki1.server.connected) {
+        triki1.server.disconnect();
+    }
+    if (triki2.server && triki2.server.connected) {
+        triki2.server.disconnect();
+    }
+    triki1.connected = false;
+    triki2.connected = false;
+    connected = false;
+    updateStatus();
+};
+
+function updateStatus() {
+    let statusText = "🔴 Disconnected";
+    if (triki1.connected && triki2.connected) {
+        statusText = "🟢🟢 Connected (2 Triki)";
+    } else if (triki1.connected) {
+        statusText = "🟢 Connected (1 Triki)";
+    }
+    document.getElementById("status").innerHTML = statusText;
+}
 
 
 // ==================== UI BUTTONS BINDING ====================
@@ -434,6 +579,7 @@ document.getElementById("snake").onclick = startSnake;
 document.getElementById("toss").onclick = startToss;
 document.getElementById("boxing").onclick = startBoxing;
 document.getElementById("frog").onclick = startFrog;
+document.getElementById("duel1v1") ? document.getElementById("duel1v1").onclick = start1v1 : null;
 
 document.getElementById("back").onclick = () => {
     if (gameInterval) clearInterval(gameInterval);
