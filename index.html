@@ -1,17 +1,69 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Triki Games</title>
+
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-<h1>🎮 Triki Test</h1>
+<div class="container">
 
-<button id="connect">Connect Triki</button>
+    <h1>🎮 Triki Games</h1>
 
-<pre id="log">Disconnected</pre>
+    <button id="connect">
+        🔵 Connect Triki
+    </button>
+
+    <div id="status">
+        🔴 Disconnected
+    </div>
+
+
+    <div id="menu">
+
+        <h2>Игры</h2>
+
+        <button class="game" id="pong">
+            🏓 Pong
+        </button>
+
+        <button class="game" id="snake">
+            🐍 Snake
+        </button>
+
+        <button class="game" id="toss">
+            🎲 Toss
+        </button>
+
+        <button class="game" id="boxing">
+            🥊 Boxing
+        </button>
+
+        <button class="game" id="frog">
+            🐸 Crazy Frog
+        </button>
+
+    </div>
+
+
+    <canvas id="game"
+        width="900"
+        height="500">
+    </canvas>
+
+
+    <button id="back" style="display:none;">
+        ⬅ Menu
+    </button>
+
+
+</div>
+
 
 <script src="app.js"></script>
 
