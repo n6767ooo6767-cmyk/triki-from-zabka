@@ -328,7 +328,7 @@ function boxingLoop() {
 }
 
 
-// ==================== 5. CRAZY FROG ====================
+// ==================== 5. CRAZY FROG (ИСПРАВЛЕНО: ТРЕБУЕТ РЕЗКОГО УДАРА, А НЕ ПЛАВНОЙ ТРЯСКИ) ====================
 let frogY = 380;
 let frogVy = 0;
 let isJumping = false;
@@ -348,8 +348,11 @@ function startFrog() {
 }
 
 function frogLoop() {
-    if (!isJumping && accel.y < -5.0) {
-        frogVy = -13;
+    let totalAccel = Math.hypot(accel.x, accel.y, accel.z);
+
+    // Изменено: теперь прыжок срабатывает только при резком ударе (общая сила > 18.0)
+    if (!isJumping && totalAccel > 18.0) {
+        frogVy = -14;
         isJumping = true;
     }
 
@@ -497,7 +500,7 @@ function resetBall1v1(dir) {
 }
 
 
-// ==================== BLE CONNECTIONS (С ЗАЩИТОЙ ОТ ДУБЛИРОВАНИЯ) ====================
+// ==================== BLE CONNECTIONS ====================
 
 document.getElementById("connect").onclick = async () => {
     try {
@@ -506,7 +509,6 @@ document.getElementById("connect").onclick = async () => {
             optionalServices: [SERVICE]
         });
 
-        // Проверка: если этот же пульт уже подключен как Triki 2
         if (triki2.connected && triki2.deviceId === device.id) {
             alert("Этот пульт Triki уже подключен как Игрок 2!");
             return;
@@ -549,7 +551,6 @@ document.getElementById("connect2") ? document.getElementById("connect2").onclic
             optionalServices: [SERVICE]
         });
 
-        // Проверка: если этот же пульт уже подключен как Triki 1
         if (triki1.connected && triki1.deviceId === device.id) {
             alert("Этот пульт Triki уже подключен как Игрок 1!");
             return;
