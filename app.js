@@ -92,11 +92,10 @@ function pongLoop() {
 }
 
 
-// ==================== 2. SNAKE ====================
+// ==================== 2. SNAKE (ИСПРАВЛЕНО: Плавный поворот по порогам наклона) ====================
 let snake = [];
 let food = {};
-let snakeDir = { x: 20, y: 0 };
-let nextDir = { x: 20, y: 0 };
+let snakeDir = { x: 2, y: 0 };
 let snakeScore = 0;
 
 function startSnake() {
@@ -108,35 +107,38 @@ function startSnake() {
     ];
     snakeScore = 0;
     spawnFood();
-    snakeDir = { x: 20, y: 0 };
-    nextDir = { x: 20, y: 0 };
-    gameInterval = setInterval(snakeLoop, 1000 / 10);
+    snakeDir = { x: 2, y: 0 }; // Стартовое движение вправо
+    gameInterval = setInterval(snakeLoop, 1000 / 30); // 30 кадров для плавной непрерывной змейки
 }
 
 function spawnFood() {
     food = {
-        x: Math.floor(Math.random() * 43) * 20 + 20,
-        y: Math.floor(Math.random() * 23) * 20 + 20
+        x: Math.floor(Math.random() * 42) * 20 + 30,
+        y: Math.floor(Math.random() * 22) * 20 + 30
     };
 }
 
 function snakeLoop() {
-    if (Math.abs(accel.x) > Math.abs(accel.y)) {
-        if (accel.x > 3 && snakeDir.x === 0) nextDir = { x: 20, y: 0 };
-        else if (accel.x < -3 && snakeDir.x === 0) nextDir = { x: -20, y: 0 };
-    } else {
-        if (accel.y > 3 && snakeDir.y === 0) nextDir = { x: 0, y: 20 };
-        else if (accel.y < -3 && snakeDir.y === 0) nextDir = { x: 0, y: -20 };
+    // Управление наклоном (порог ±2.5, запрет разворота на 180 градусов назад)
+    if (accel.x > 2.5 && snakeDir.x === 0) {
+        snakeDir = { x: 2, y: 0 };
+    } else if (accel.x < -2.5 && snakeDir.x === 0) {
+        snakeDir = { x: -2, y: 0 };
+    } else if (accel.y > 2.5 && snakeDir.y === 0) {
+        snakeDir = { x: 0, y: 2 };
+    } else if (accel.y < -2.5 && snakeDir.y === 0) {
+        snakeDir = { x: 0, y: -2 };
     }
-    snakeDir = nextDir;
 
     let head = { x: snake[0].x + snakeDir.x, y: snake[0].y + snakeDir.y };
 
+    // Проверка стен
     if (head.x < 0 || head.x >= 900 || head.y < 0 || head.y >= 500) {
         startSnake();
         return;
     }
 
+    // Проверка столкновения с собой
     for (let part of snake) {
         if (head.x === part.x && head.y === part.y) {
             startSnake();
@@ -146,7 +148,9 @@ function snakeLoop() {
 
     snake.unshift(head);
 
-    if (head.x === food.x && head.y === food.y) {
+    // Поедание еды
+    let dist = Math.hypot(head.x - food.x, head.y - food.y);
+    if (dist < 15) {
         snakeScore++;
         spawnFood();
     } else {
@@ -155,11 +159,11 @@ function snakeLoop() {
 
     clearCanvas();
     ctx.fillStyle = "red";
-    ctx.fillRect(food.x, food.y, 18, 18);
+    ctx.fillRect(food.x - 8, food.y - 8, 16, 16);
 
     ctx.fillStyle = "lime";
     for (let part of snake) {
-        ctx.fillRect(part.x, part.y, 18, 18);
+        ctx.fillRect(part.x - 8, part.y - 8, 16, 16);
     }
 
     ctx.fillStyle = "white";
@@ -168,51 +172,50 @@ function snakeLoop() {
 }
 
 
-// ==================== 3. TOSS ====================
-let tossBall = { x: 450, y: 250, vx: 0, vy: 0 };
-let target = { x: 450, y: 100, radius: 40 };
+// ==================== 3. TOSS (ИСПРАВЛЕНО: Управляется наклоном как у жабки, собираем монетки) ====================
+let tossBall = { x: 450, y: 250 };
+let tossTarget = { x: 450, y: 250, radius: 25 };
 let tossScore = 0;
 
 function startToss() {
     setupGame("toss");
-    tossBall = { x: 450, y: 400, vx: 0, vy: 0 };
+    tossBall = { x: 450, y: 250 };
     tossScore = 0;
-    spawnTarget();
+    spawnTossTarget();
     gameInterval = setInterval(tossLoop, 1000 / 60);
 }
 
-function spawnTarget() {
-    target.x = Math.random() * 700 + 100;
-    target.y = Math.random() * 250 + 80;
+function spawnTossTarget() {
+    tossTarget.x = Math.random() * 700 + 100;
+    tossTarget.y = Math.random() * 350 + 80;
 }
 
 function tossLoop() {
-    tossBall.vx += accel.x * 0.4;
-    tossBall.vy += accel.y * 0.4;
+    // Наклон Triki напрямую двигает шарик по экрану (как у жабки)
+    tossBall.x += accel.x * 3.5;
+    tossBall.y += accel.y * 3.5;
 
-    tossBall.vx *= 0.95;
-    tossBall.vy *= 0.95;
+    // Границы холста
+    if (tossBall.x < 20) tossBall.x = 20;
+    if (tossBall.x > 880) tossBall.x = 880;
+    if (tossBall.y < 20) tossBall.y = 20;
+    if (tossBall.y > 480) tossBall.y = 480;
 
-    tossBall.x += tossBall.vx;
-    tossBall.y += tossBall.vy;
-
-    if (tossBall.x < 15) { tossBall.x = 15; tossBall.vx *= -1; }
-    if (tossBall.x > 885) { tossBall.x = 885; tossBall.vx *= -1; }
-    if (tossBall.y < 15) { tossBall.y = 15; tossBall.vy *= -1; }
-    if (tossBall.y > 485) { tossBall.y = 485; tossBall.vy *= -1; }
-
-    let dist = Math.hypot(tossBall.x - target.x, tossBall.y - target.y);
-    if (dist < target.radius) {
+    // Сбор цели
+    let dist = Math.hypot(tossBall.x - tossTarget.x, tossBall.y - tossTarget.y);
+    if (dist < tossTarget.radius + 15) {
         tossScore++;
-        spawnTarget();
+        spawnTossTarget();
     }
 
     clearCanvas();
+    // Цель
     ctx.fillStyle = "gold";
     ctx.beginPath();
-    ctx.arc(target.x, target.y, target.radius, 0, Math.PI * 2);
+    ctx.arc(tossTarget.x, tossTarget.y, tossTarget.radius, 0, Math.PI * 2);
     ctx.fill();
 
+    // Шар игрока
     ctx.fillStyle = "#ff3366";
     ctx.beginPath();
     ctx.arc(tossBall.x, tossBall.y, 15, 0, Math.PI * 2);
@@ -224,8 +227,8 @@ function tossLoop() {
 }
 
 
-// ==================== 4. BOXING (Хардкорный Силомер) ====================
-let punchState = "ready"; // "ready", "punching", "result"
+// ==================== 4. BOXING (ИСПРАВЛЕНО: УЛЬТРА-ХАРДКОРНЫЙ СИЛОМЕР, хрен набьешь больше 300) ====================
+let punchState = "ready"; 
 let currentPunchScore = 0;
 let maxPunchScore = 0;
 let punchTimer = 0;
@@ -240,22 +243,22 @@ function startBoxing() {
 }
 
 function boxingLoop() {
-    // Берём чистую, суровую амплитуду ускорения по всем осям без подкрутки
+    // Берем модуль ускорения по всем осям
     let totalAccel = Math.hypot(accel.x, accel.y, accel.z);
 
     if (punchState === "ready") {
-        // Порог повышен до 14 — нужно ударить реально со всей дури, легкий взмах игра проигнорирует
-        if (totalAccel > 14.0) {
+        // Ужасный порог 22.0 — нужен молниеносный мощнейший удар об стол или резкий бросок
+        if (totalAccel > 22.0) {
             punchState = "punching";
             
-            // Формула сложная: множитель маленький, чтобы дойти до 999, нужен олимпийский удар
-            currentPunchScore = Math.floor(Math.pow(totalAccel, 1.4) * 8 + Math.random() * 15);
+            // Очень жесткая формула, на выходе максимум копейки для слабых ударов
+            currentPunchScore = Math.floor(Math.pow(totalAccel, 1.1) * 3 + Math.random() * 10);
             if (currentPunchScore > 999) currentPunchScore = 999;
             
             if (currentPunchScore > maxPunchScore) {
                 maxPunchScore = currentPunchScore;
             }
-            punchTimer = 90; // показ результата ~1.5 секунды
+            punchTimer = 90;
         }
     } else if (punchState === "punching") {
         punchTimer--;
@@ -269,12 +272,12 @@ function boxingLoop() {
     ctx.fillStyle = "white";
     ctx.font = "32px Arial";
     ctx.textAlign = "center";
-    ctx.fillText("🥊 ХАРДКОРНЫЙ СИЛОМЕР 🥊", 450, 80);
+    ctx.fillText("🥊 МЕГА-СИЛОМЕР (ХАРДКОР) 🥊", 450, 80);
 
     if (punchState === "ready") {
-        ctx.fillStyle = "#ff4444";
+        ctx.fillStyle = "#ff2222";
         ctx.font = "24px Arial";
-        ctx.fillText("БЕЙ СО ВСЕЙ ДУРИ! (Порог > 14.0)", 450, 160);
+        ctx.fillText("МОЛОТИ СО ВСЕЙ ДУРИ! (Порог > 22.0)", 450, 160);
 
         if (maxPunchScore > 0) {
             ctx.fillStyle = "gold";
@@ -294,14 +297,14 @@ function boxingLoop() {
 
         ctx.fillStyle = "white";
         ctx.font = "20px Arial";
-        ctx.fillText("УДАР ИЗ БУНКЕРА!", 450, 360);
+        ctx.fillText("РЕЗУЛЬТАТ УДАРА!", 450, 360);
     }
     
     ctx.textAlign = "left";
 }
 
 
-// ==================== 5. CRAZY FROG ====================
+// ==================== 5. CRAZY FROG (ИСПРАВЛЕНО: Четкий прыжок на резкий взмах вверх) ====================
 let frogY = 380;
 let frogVy = 0;
 let isJumping = false;
@@ -321,12 +324,13 @@ function startFrog() {
 }
 
 function frogLoop() {
-    if (!isJumping && accel.y < -4) {
-        frogVy = -14;
+    // Прыжок срабатывает, когда акселерометр Y резко уходит в минус (резкий взвок пульта вверх)
+    if (!isJumping && accel.y < -5.0) {
+        frogVy = -13;
         isJumping = true;
     }
 
-    frogVy += 0.6;
+    frogVy += 0.55; // Гравитация
     frogY += frogVy;
 
     if (frogY > 380) {
@@ -342,10 +346,11 @@ function frogLoop() {
     }
 
     for (let i = obstacles.length - 1; i >= 0; i--) {
-        obstacles[i].x -= 6;
+        obstacles[i].x -= 7;
 
+        // Коллизия с препятствием
         if (
-            obstacles[i].x < 180 &&
+            obstacles[i].x < 185 &&
             obstacles[i].x + obstacles[i].w > 150 &&
             frogY + 40 > 420 - obstacles[i].h
         ) {
@@ -361,12 +366,15 @@ function frogLoop() {
 
     clearCanvas();
 
+    // Земля
     ctx.fillStyle = "#333";
     ctx.fillRect(0, 420, 900, 80);
 
+    // Лягушка
     ctx.fillStyle = "#22bb22";
     ctx.fillRect(150, frogY, 40, 40);
 
+    // Препятствия
     ctx.fillStyle = "#ff5555";
     for (let obs of obstacles) {
         ctx.fillRect(obs.x, 420 - obs.h, obs.w, obs.h);
