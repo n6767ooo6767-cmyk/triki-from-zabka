@@ -13,13 +13,14 @@ const START = Uint8Array.from([
     0x03
 ]);
 
-// Поддержка двух контроллеров Triki для режима 1v1
 let triki1 = { server: null, rx: null, tx: null, accel: { x: 0, y: 0, z: 0 }, connected: false };
 let triki2 = { server: null, rx: null, tx: null, accel: { x: 0, y: 0, z: 0 }, connected: false };
 
-// Для совместимости с одиночными играми (управляет первый пульт)
 let accel = { x: 0, y: 0, z: 0 };
 let connected = false;
+
+// Глобальная сложность силомера: "easy", "medium", "hard", "impossible"
+let punchDifficulty = "hard"; 
 
 // GAME CORE
 const canvas = document.getElementById("game");
@@ -220,11 +221,23 @@ function tossLoop() {
 }
 
 
-// ==================== 4. BOXING (МЕГА-СИЛОМЕР) ====================
+// ==================== 4. BOXING (СИЛОМЕР С ВЫБОРОМ СЛОЖНОСТИ) ====================
 let punchState = "ready"; 
 let currentPunchScore = 0;
 let maxPunchScore = 0;
 let punchTimer = 0;
+
+function setBoxingDifficulty(diff) {
+    punchDifficulty = diff;
+    // Подсветка активной кнопки сложности
+    ['easy', 'medium', 'hard', 'impossible'].forEach(d => {
+        const btn = document.getElementById("diff_" + d);
+        if (btn) {
+            btn.style.border = (d === diff) ? "3px solid #ffcc00" : "1px solid #555";
+            btn.style.background = (d === diff) ? "#333" : "#222";
+        }
+    });
+}
 
 function startBoxing() {
     setupGame("boxing");
@@ -238,11 +251,36 @@ function startBoxing() {
 function boxingLoop() {
     let totalAccel = Math.hypot(accel.x, accel.y, accel.z);
 
+    // Настройка порогов и формул под выбранный уровень сложности
+    let threshold = 5.0;
+    let multiplier = 40.0;
+    let powerExp = 1.0;
+
+    if (punchDifficulty === "easy") {
+        threshold = 4.0;
+        multiplier = 60.0;
+        powerExp = 0.9;
+    } else if (punchDifficulty === "medium") {
+        threshold = 10.0;
+        multiplier = 25.0;
+        powerExp = 1.1;
+    } else if (punchDifficulty === "hard") {
+        threshold = 22.0;
+        multiplier = 10.0;
+        powerExp = 1.25;
+    } else if (punchDifficulty === "impossible") {
+        threshold = 38.0; // Жесткий порог: нужен колоссальный удар
+        multiplier = 4.5;
+        powerExp = 1.15;
+    }
+
     if (punchState === "ready") {
-        if (totalAccel > 22.0) {
+        if (totalAccel > threshold) {
             punchState = "punching";
-            currentPunchScore = Math.floor(Math.pow(totalAccel, 1.1) * 3 + Math.random() * 10);
+            
+            currentPunchScore = Math.floor(Math.pow(totalAccel, powerExp) * multiplier + Math.random() * 5);
             if (currentPunchScore > 999) currentPunchScore = 999;
+            if (currentPunchScore < 1) currentPunchScore = 1;
             
             if (currentPunchScore > maxPunchScore) {
                 maxPunchScore = currentPunchScore;
@@ -259,34 +297,34 @@ function boxingLoop() {
     clearCanvas();
 
     ctx.fillStyle = "white";
-    ctx.font = "32px Arial";
+    ctx.font = "28px Arial";
     ctx.textAlign = "center";
-    ctx.fillText("🥊 МЕГА-СИЛОМЕР (ХАРДКОР) 🥊", 450, 80);
+    ctx.fillText("🥊 СИЛОМЕР [" + punchDifficulty.toUpperCase() + "] 🥊", 450, 60);
 
     if (punchState === "ready") {
         ctx.fillStyle = "#ff2222";
-        ctx.font = "24px Arial";
-        ctx.fillText("МОЛОТИ СО ВСЕЙ ДУРИ! (Порог > 22.0)", 450, 160);
+        ctx.font = "20px Arial";
+        ctx.fillText("Порог удара > " + threshold + ". Бей!", 450, 110);
 
         if (maxPunchScore > 0) {
             ctx.fillStyle = "gold";
             ctx.font = "20px Arial";
-            ctx.fillText("Рекорд: " + maxPunchScore, 450, 220);
+            ctx.fillText("Рекорд: " + maxPunchScore, 450, 150);
         }
     } else {
         ctx.fillStyle = "#111";
-        ctx.fillRect(250, 150, 400, 180);
+        ctx.fillRect(250, 130, 400, 180);
         ctx.strokeStyle = "#ff3333";
         ctx.lineWidth = 6;
-        ctx.strokeRect(250, 150, 400, 180);
+        ctx.strokeRect(250, 130, 400, 180);
 
         ctx.fillStyle = "#ff2222";
         ctx.font = "bold 80px monospace";
-        ctx.fillText(currentPunchScore, 450, 270);
+        ctx.fillText(currentPunchScore, 450, 250);
 
         ctx.fillStyle = "white";
         ctx.font = "20px Arial";
-        ctx.fillText("РЕЗУЛЬТАТ УДАРА!", 450, 360);
+        ctx.fillText("РЕЗУЛЬТАТ!", 450, 340);
     }
     
     ctx.textAlign = "left";
@@ -370,7 +408,7 @@ function frogLoop() {
 }
 
 
-// ==================== 6. 1V1 PONG (Требует 2 пульта Triki) ====================
+// ==================== 6. 1V1 PONG ====================
 let p1Y = 200;
 let p2Y = 200;
 let ball1v1 = { x: 450, y: 250, vx: 5, vy: 3 };
@@ -392,12 +430,10 @@ function start1v1() {
 }
 
 function duelLoop() {
-    // Игрок 1 управляет левой ракеткой первым пульком (triki1)
     p1Y += triki1.accel.y * 8;
     if (p1Y < 0) p1Y = 0;
     if (p1Y > 400) p1Y = 400;
 
-    // Игрок 2 управляет правой ракеткой вторым пульком (triki2)
     p2Y += triki2.accel.y * 8;
     if (p2Y < 0) p2Y = 0;
     if (p2Y > 400) p2Y = 400;
@@ -407,24 +443,20 @@ function duelLoop() {
 
     if (ball1v1.y < 0 || ball1v1.y > 500) ball1v1.vy *= -1;
 
-    // Столкновение с левой ракеткой (Игрок 1)
     if (ball1v1.x < 35 && ball1v1.y > p1Y && ball1v1.y < p1Y + 100) {
         ball1v1.vx *= -1;
-        ball1v1.vx *= 1.05; // ускорение мяча
+        ball1v1.vx *= 1.05;
     }
 
-    // Столкновение с правой ракеткой (Игрок 2)
     if (ball1v1.x > 865 && ball1v1.y > p2Y && ball1v1.y < p2Y + 100) {
         ball1v1.vx *= -1;
         ball1v1.vx *= 1.05;
     }
 
-    // Гол игроку 2 (мяч улетел влево)
     if (ball1v1.x < 0) {
         score2++;
         resetBall1v1(-1);
     }
-    // Гол игроку 1 (мяч улетел вправо)
     if (ball1v1.x > 900) {
         score1++;
         resetBall1v1(1);
@@ -432,7 +464,6 @@ function duelLoop() {
 
     clearCanvas();
 
-    // Сетка посередине
     ctx.strokeStyle = "#444";
     ctx.lineWidth = 4;
     ctx.setLineDash([10, 10]);
@@ -442,21 +473,17 @@ function duelLoop() {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Ракетка 1 (Игрок 1)
     ctx.fillStyle = "#2d7cff";
     ctx.fillRect(20, p1Y, 15, 100);
 
-    // Ракетка 2 (Игрок 2)
     ctx.fillStyle = "#ff3333";
     ctx.fillRect(865, p2Y, 15, 100);
 
-    // Мяч
     ctx.fillStyle = "white";
     ctx.beginPath();
     ctx.arc(ball1v1.x, ball1v1.y, 10, 0, Math.PI * 2);
     ctx.fill();
 
-    // Счёт
     ctx.fillStyle = "#2d7cff";
     ctx.font = "32px Arial";
     ctx.fillText("P1: " + score1, 250, 50);
@@ -475,7 +502,6 @@ function resetBall1v1(dir) {
 
 // ==================== BLE CONNECTIONS ====================
 
-// Подключение первого пульта Triki
 document.getElementById("connect").onclick = async () => {
     try {
         const device = await navigator.bluetooth.requestDevice({
@@ -500,7 +526,6 @@ document.getElementById("connect").onclick = async () => {
             triki1.accel.y = dv.getInt16(10, true) / 2048;
             triki1.accel.z = dv.getInt16(12, true) / 2048;
 
-            // Синхронизация с глобальными переменными для одиночных игр
             accel = triki1.accel;
         });
 
@@ -513,7 +538,6 @@ document.getElementById("connect").onclick = async () => {
     }
 };
 
-// Подключение второго пульта Triki (для режима 1v1)
 document.getElementById("connect2") ? document.getElementById("connect2").onclick = async () => {
     try {
         const device = await navigator.bluetooth.requestDevice({
@@ -547,7 +571,6 @@ document.getElementById("connect2") ? document.getElementById("connect2").onclic
     }
 } : null;
 
-// Кнопка отключения всех пультов
 document.getElementById("disconnect").onclick = () => {
     if (triki1.server && triki1.server.connected) {
         triki1.server.disconnect();
@@ -580,6 +603,14 @@ document.getElementById("toss").onclick = startToss;
 document.getElementById("boxing").onclick = startBoxing;
 document.getElementById("frog").onclick = startFrog;
 document.getElementById("duel1v1") ? document.getElementById("duel1v1").onclick = start1v1 : null;
+
+// Привязка кнопок выбора сложности силомера
+['easy', 'medium', 'hard', 'impossible'].forEach(d => {
+    const btn = document.getElementById("diff_" + d);
+    if (btn) {
+        btn.onclick = () => setBoxingDifficulty(d);
+    }
+});
 
 document.getElementById("back").onclick = () => {
     if (gameInterval) clearInterval(gameInterval);
