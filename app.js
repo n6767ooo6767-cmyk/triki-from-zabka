@@ -224,69 +224,78 @@ function tossLoop() {
 }
 
 
-// ==================== 4. BOXING ====================
-let boxerState = "idle";
-let enemyHp = 100;
-let playerHp = 100;
-let punchCooldown = 0;
-let boxingScore = 0;
+// ==================== 4. BOXING (Силомер) ====================
+let punchState = "ready"; // "ready", "punching", "result"
+let currentPunchScore = 0;
+let maxPunchScore = 0;
+let punchTimer = 0;
 
 function startBoxing() {
     setupGame("boxing");
-    enemyHp = 100;
-    playerHp = 100;
-    boxingScore = 0;
-    punchCooldown = 0;
+    punchState = "ready";
+    currentPunchScore = 0;
+    maxPunchScore = 0;
+    punchTimer = 0;
     gameInterval = setInterval(boxingLoop, 1000 / 60);
 }
 
 function boxingLoop() {
-    if (punchCooldown > 0) punchCooldown--;
+    let totalAccel = Math.hypot(accel.x, accel.y, accel.z);
 
-    if (punchCooldown === 0) {
-        if (accel.x > 5) {
-            boxerState = "punch_right";
-            enemyHp -= 15;
-            boxingScore += 10;
-            punchCooldown = 20;
-        } else if (accel.x < -5) {
-            boxerState = "punch_left";
-            enemyHp -= 15;
-            boxingScore += 10;
-            punchCooldown = 20;
-        } else {
-            boxerState = "idle";
+    if (punchState === "ready") {
+        // Ждем резкого удара (взмаха)
+        if (totalAccel > 4.0) {
+            punchState = "punching";
+            currentPunchScore = Math.floor(totalAccel * 120 + Math.random() * 50);
+            if (currentPunchScore > 999) currentPunchScore = 999;
+            if (currentPunchScore > maxPunchScore) {
+                maxPunchScore = currentPunchScore;
+            }
+            punchTimer = 90; // показ результата ~1.5 секунды
         }
-    }
-
-    if (Math.random() < 0.02 && playerHp > 0) {
-        playerHp -= 5;
+    } else if (punchState === "punching") {
+        punchTimer--;
+        if (punchTimer <= 0) {
+            punchState = "ready";
+        }
     }
 
     clearCanvas();
 
+    // Заголовок силомера
     ctx.fillStyle = "white";
-    ctx.font = "24px Arial";
-    ctx.fillText("Ваше здоровье: " + Math.max(0, playerHp), 50, 50);
-    ctx.fillText("Здоровье противника: " + Math.max(0, enemyHp), 520, 50);
-    ctx.fillText("Очки: " + boxingScore, 50, 90);
+    ctx.font = "32px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("🥊 СИЛОМЕР 🥊", 450, 80);
 
-    ctx.fillStyle = boxerState !== "idle" ? "#00ffcc" : "#2d7cff";
-    ctx.fillRect(200, 250, 80, 150);
-    if (boxerState === "punch_right") {
-        ctx.fillRect(280, 280, 60, 30);
-    } else if (boxerState === "punch_left") {
-        ctx.fillRect(280, 330, 60, 30);
+    if (punchState === "ready") {
+        ctx.fillStyle = "#2d7cff";
+        ctx.font = "24px Arial";
+        ctx.fillText("Ударь Triki изо всех сил!", 450, 160);
+
+        if (maxPunchScore > 0) {
+            ctx.fillStyle = "gold";
+            ctx.font = "20px Arial";
+            ctx.fillText("Рекорд: " + maxPunchScore, 450, 220);
+        }
+    } else {
+        // Табло как в игровом автомате
+        ctx.fillStyle = "#111";
+        ctx.fillRect(250, 150, 400, 180);
+        ctx.strokeStyle = "#ff3333";
+        ctx.lineWidth = 6;
+        ctx.strokeRect(250, 150, 400, 180);
+
+        ctx.fillStyle = "#ff2222";
+        ctx.font = "bold 80px monospace";
+        ctx.fillText(currentPunchScore, 450, 270);
+
+        ctx.fillStyle = "white";
+        ctx.font = "20px Arial";
+        ctx.fillText("СУПЕР УДАР!", 450, 360);
     }
-
-    ctx.fillStyle = "#ff3333";
-    ctx.fillRect(620, 250, 80, 150);
-
-    if (enemyHp <= 0 || playerHp <= 0) {
-        ctx.fillStyle = "gold";
-        ctx.font = "40px Arial";
-        ctx.fillText(enemyHp <= 0 ? "ПОБЕДА!" : "ПОРАЖЕНИЕ!", 330, 200);
-    }
+    
+    ctx.textAlign = "left"; // сброс выравнивания
 }
 
 
