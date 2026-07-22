@@ -670,6 +670,39 @@ function updateStatus() {
     document.getElementById("status").innerHTML = statusText;
 }
 
+// ==================== TRIKI LED TEST ====================
+
+async function trikiLED(triki, on) {
+    if (!triki.connected || !triki.rx) {
+        alert("Сначала подключи Triki!");
+        return;
+    }
+
+    try {
+        if (on) {
+            await triki.rx.writeValueWithoutResponse(
+                new Uint8Array([0x01])
+            );
+            console.log("LED ON");
+        } else {
+            await triki.rx.writeValueWithoutResponse(
+                new Uint8Array([0x00])
+            );
+            console.log("LED OFF");
+        }
+    } catch (err) {
+        console.error("LED error:", err);
+    }
+}
+
+
+document.getElementById("ledTest").onclick = async () => {
+    await trikiLED(triki1, true);
+
+    setTimeout(async () => {
+        await trikiLED(triki1, false);
+    }, 1000);
+};
 
 // ==================== UI BUTTONS BINDING ====================
 
