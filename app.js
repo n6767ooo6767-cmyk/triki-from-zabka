@@ -1,6 +1,7 @@
 const SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
 const RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 const TX = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+const LED = "6e400004-b5a3-f393-e0a9-e50e24dcca9e";
 
 const START = Uint8Array.from([
     0x20,
@@ -13,8 +14,26 @@ const START = Uint8Array.from([
     0x03
 ]);
 
-let triki1 = { server: null, rx: null, tx: null, accel: { x: 0, y: 0, z: 0 }, connected: false, deviceId: null };
-let triki2 = { server: null, rx: null, tx: null, accel: { x: 0, y: 0, z: 0 }, connected: false, deviceId: null };
+let triki1 = { 
+    server: null,
+    rx: null,
+    tx: null,
+    led: null,
+    accel: { x: 0, y: 0, z: 0 },
+    connected: false,
+    deviceId: null
+};
+
+
+let triki2 = { 
+    server: null,
+    rx: null,
+    tx: null,
+    led: null,
+    accel: { x: 0, y: 0, z: 0 },
+    connected: false,
+    deviceId: null
+};
 
 let accel = { x: 0, y: 0, z: 0 };
 let connected = false;
@@ -581,6 +600,7 @@ document.getElementById("connect").onclick = async () => {
         const service = await triki1.server.getPrimaryService(SERVICE);
         triki1.rx = await service.getCharacteristic(RX);
         const tx = await service.getCharacteristic(TX);
+        triki1.led = await service.getCharacteristic(LED);
 
         await tx.startNotifications();
 
@@ -623,6 +643,7 @@ document.getElementById("connect2") ? document.getElementById("connect2").onclic
         const service = await triki2.server.getPrimaryService(SERVICE);
         triki2.rx = await service.getCharacteristic(RX);
         const tx = await service.getCharacteristic(TX);
+        triki2.led = await service.getCharacteristic(LED);
 
         await tx.startNotifications();
 
@@ -670,40 +691,18 @@ function updateStatus() {
     document.getElementById("status").innerHTML = statusText;
 }
 
-// ==================== TRIKI LED TEST ====================
-
-async function trikiLED(triki, on) {
-    if (!triki.connected || !triki.rx) {
-        alert("Сначала подключи Triki!");
+async function setTrikiLED(triki, state) {
+    if (!triki.led) {
+        console.log("LED characteristic не найден");
         return;
     }
 
-    try {
-        if (on) {
-            await triki.rx.writeValueWithoutResponse(
-                new Uint8Array([0x01])
-            );
-            console.log("LED ON");
-        } else {
-            await triki.rx.writeValueWithoutResponse(
-                new Uint8Array([0x00])
-            );
-            console.log("LED OFF");
-        }
-    } catch (err) {
-        console.error("LED error:", err);
-    }
+    await triki.led.writeValueWithoutResponse(
+        new Uint8Array([
+            state ? 0x01 : 0x00
+        ])
+    );
 }
-
-
-document.getElementById("ledTest").onclick = async () => {
-    await trikiLED(triki1, true);
-
-    setTimeout(async () => {
-        await trikiLED(triki1, false);
-    }, 1000);
-};
-
 // ==================== UI BUTTONS BINDING ====================
 
 document.getElementById("pong").onclick = startPong;
@@ -726,4 +725,13 @@ document.getElementById("back").onclick = () => {
     clearCanvas();
     document.getElementById("menu").style.display = "block";
     document.getElementById("back").style.display = "none";
+};
+document.getElementById("ledTest").onclick = async () => {
+
+    await setTrikiLED(triki1, true);
+
+    setTimeout(() => {
+        setTrikiLED(triki1, false);
+    }, 1000);
+
 };
