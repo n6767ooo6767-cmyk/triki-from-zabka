@@ -153,3 +153,17 @@ canvas {
     background: #666;
 
 }
+
+#trikiLed {
+    width: 40px;
+    height: 40px;
+    margin: 20px auto;
+    border-radius: 50%;
+    background: #333;
+    border: 2px solid #555;
+}
+
+#trikiLed.active {
+    background: #00ff55;
+    box-shadow: 0 0 25px #00ff55;
+}
